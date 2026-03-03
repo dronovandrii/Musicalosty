@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Музикалость</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ══ МОДАЛКА АВТОРИЗАЦІЇ ════════════════════════════════ -->
+<div id="authModal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-tabs">
+            <button class="modal-tab active" data-auth="login">Увійти</button>
+            <button class="modal-tab" data-auth="register">Реєстрація</button>
+        </div>
+        <div id="loginForm" class="auth-form active">
+            <input type="text"     id="loginLogin"    placeholder="Логін">
+            <input type="password" id="loginPassword" placeholder="Пароль">
+            <button id="loginSubmit" class="auth-submit">Увійти</button>
+            <div id="loginError" class="auth-error"></div>
+        </div>
+        <div id="registerForm" class="auth-form">
+            <input type="text"     id="regName"     placeholder="Ім'я">
+            <input type="text"     id="regLogin"    placeholder="Логін">
+            <input type="password" id="regPassword" placeholder="Пароль">
+            <button id="registerSubmit" class="auth-submit">Зареєструватись</button>
+            <div id="registerError" class="auth-error"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ══ МОДАЛКА "ДОДАТИ ДО ПЛЕЙЛИСТА" ═════════════════════ -->
+<div id="addToPlaylistModal" class="modal-overlay hidden">
+    <div class="modal-box">
+        <div class="modal-title">Додати до плейлиста</div>
+        <div id="playlistChoiceList" class="playlist-choice-list"></div>
+        <button id="closeAddModal" class="auth-submit cancel-btn">Скасувати</button>
+    </div>
+</div>
+
+<!-- ══ МОДАЛКА ПІДТВЕРДЖЕННЯ ВИДАЛЕННЯ ПІСНІ ═════════════ -->
+<div id="deleteConfirmModal" class="modal-overlay hidden">
+    <div class="modal-box">
+        <div class="modal-title">⚠️ Видалити пісню?</div>
+        <div id="deleteConfirmText" class="delete-confirm-text"></div>
+        <div class="delete-confirm-actions">
+            <button id="deleteConfirmYes" class="auth-submit delete-yes-btn">Так, видалити</button>
+            <button id="deleteConfirmNo"  class="auth-submit cancel-btn">Скасувати</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══ НАВІГАЦІЯ ══════════════════════════════════════════ -->
+<header class="menu">
+    <div class="menu__conteiner">
+        <div class="source-tabs">
+            <button class="tab-btn" data-tab="Profile">Profile</button>
+            <button class="tab-btn" data-tab="Discover">Discover</button>
+            <button class="tab-btn active" data-tab="Home">Home</button>
+            <button class="tab-btn" data-tab="List">List</button>
+            <button class="tab-btn" data-tab="Menu">Menu</button>
+        </div>
+    </div>
+</header>
+
+<!-- ══ ВКЛАДКИ ════════════════════════════════════════════ -->
+<div class="tabs-content">
+
+    <!-- HOME -->
+    <div id="HomeTab" class="tab-pane active">
+        <div class="Home">
+            <img id="coverImg" src="https://www.dropbox.com/scl/fi/l3ylkia5yljjmrp7kq0gp/AC-DC-Thunderstruck.jpg?rlkey=6s2mth22p670lyse9jmxtcczg&st=3lag12x3&raw=1" alt="Cover" class="prw">
+            <div id="trackInfo" style="margin-top:15px; text-align:center; font-weight:bold;">Завантажте трек</div>
+            <button id="addToPlaylistBtn" class="add-to-pl-btn">＋ До плейлиста</button>
+            <div class="progress-container">
+                <input type="range" id="progressBar" value="0" min="0" max="100" step="0.1">
+            </div>
+            <div class="controls">
+                <button id="rewind10"     class="control-btn">⏪</button>
+                <button id="playPauseBtn" class="control-btn play-btn">▶</button>
+                <button id="forward10"    class="control-btn">⏩</button>
+            </div>
+            <audio id="audio" style="display:none;"></audio>
+        </div>
+    </div>
+
+    <!-- DISCOVER -->
+    <div id="DiscoverTab" class="tab-pane">
+        <div class="Discover">
+            <input type="text" id="searchInput" placeholder="🔍 Пошук за назвою...">
+            <div class="song-list-wrap" id="songList"></div>
+        </div>
+    </div>
+
+    <!-- LIST -->
+    <div id="ListTab" class="tab-pane">
+        <div class="List">
+            <div id="plMainView">
+                <div class="list-header-row">
+                    <h3>Плейлисти</h3>
+                    <button id="showCreateForm" class="create-pl-btn">＋ Новий</button>
+                </div>
+                <div id="createPlForm" class="create-pl-form hidden">
+                    <input type="text" id="newPlName" placeholder="Назва плейлиста" maxlength="40">
+                    <div class="create-pl-actions">
+                        <button id="confirmCreatePl" class="auth-submit">Створити</button>
+                        <button id="cancelCreatePl"  class="auth-submit cancel-btn">Скасувати</button>
+                    </div>
+                </div>
+                <div id="playlistsContainer" class="playlists-container"></div>
+            </div>
+            <div id="plDetailView" class="hidden">
+                <div class="pl-detail-header">
+                    <button id="backToPlaylists" class="back-btn">← Назад</button>
+                    <span id="activePlName" class="pl-detail-title"></span>
+                </div>
+                <div class="song-list-wrap" id="playlistSongList"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PROFILE -->
+    <div id="ProfileTab" class="tab-pane">
+        <div class="Home">
+            <div id="profileInfo" class="profile-info"></div>
+        </div>
+    </div>
+
+    <!-- MENU — керування піснями -->
+    <div id="MenuTab" class="tab-pane">
+        <div class="Menu">
+
+            <!-- Додати пісню -->
+            <div class="menu-section">
+                <div class="menu-section-title">➕ Додати пісню</div>
+                <div class="menu-form">
+                    <input type="text" id="addSongName"    placeholder="Назва пісні" maxlength="80">
+                    <input type="text" id="addSongURL"     placeholder="Посилання на трек (Dropbox)">
+                    <input type="text" id="addSongCover"   placeholder="Посилання на обкладинку (Dropbox)">
+                    <div id="addSongPreview" class="song-preview-row hidden">
+                        <img id="addSongPreviewImg" src="" alt="preview" class="preview-thumb">
+                        <span id="addSongPreviewName"></span>
+                    </div>
+                    <button id="addSongBtn" class="auth-submit">Додати пісню</button>
+                    <div id="addSongStatus" class="status-msg"></div>
+                </div>
+            </div>
+
+            <div class="menu-divider"></div>
+
+            <!-- Видалити пісню -->
+            <div class="menu-section">
+                <div class="menu-section-title">🗑️ Видалити пісню</div>
+                <div class="menu-form">
+                    <input type="text" id="deleteSongSearch" placeholder="🔍 Пошук своїх пісень...">
+                    <div class="song-list-wrap" id="deleteSongList"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<script src="dropbox-db.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
