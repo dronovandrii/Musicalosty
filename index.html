@@ -44,7 +44,7 @@
 <!-- ══ МОДАЛКА ПІДТВЕРДЖЕННЯ ВИДАЛЕННЯ ПІСНІ ═════════════ -->
 <div id="deleteConfirmModal" class="modal-overlay hidden">
     <div class="modal-box">
-        <div class="modal-title">⚠️ Видалити пісню?</div>
+        <div class="modal-title">Опетушить пісню?</div>
         <div id="deleteConfirmText" class="delete-confirm-text"></div>
         <div class="delete-confirm-actions">
             <button id="deleteConfirmYes" class="auth-submit delete-yes-btn">Так, видалити</button>
@@ -57,11 +57,11 @@
 <header class="menu">
     <div class="menu__conteiner">
         <div class="source-tabs">
-            <button class="tab-btn" data-tab="Profile">Profile</button>
-            <button class="tab-btn" data-tab="Discover">Discover</button>
-            <button class="tab-btn active" data-tab="Home">Home</button>
-            <button class="tab-btn" data-tab="List">List</button>
-            <button class="tab-btn" data-tab="Menu">Menu</button>
+            <button class="tab-btn" data-tab="Profile">Профіль</button>
+            <button class="tab-btn" data-tab="Discover">Пісні</button>
+            <button class="tab-btn active" data-tab="Home">Умвоии</button>
+            <button class="tab-btn" data-tab="List">Плейлисти</button>
+            <button class="tab-btn" data-tab="Menu">Меню</button>
         </div>
     </div>
 </header>
@@ -72,16 +72,17 @@
     <!-- HOME -->
     <div id="HomeTab" class="tab-pane active">
         <div class="Home">
-            <img id="coverImg" src="https://www.dropbox.com/scl/fi/l3ylkia5yljjmrp7kq0gp/AC-DC-Thunderstruck.jpg?rlkey=6s2mth22p670lyse9jmxtcczg&st=3lag12x3&raw=1" alt="Cover" class="prw">
-            <div id="trackInfo" style="margin-top:15px; text-align:center; font-weight:bold;">Завантажте трек</div>
+            <img id="coverImg" src="" alt="Cover" class="prw hidden">
+            <div id="noTrackMsg" style="text-align:center; font-size:1.1rem; opacity:1; padding:40px 0 30px; letter-spacing:0.01em;">Вибери пісню</div>
+            <div id="trackInfo" style="margin-top:0; text-align:center; font-weight:bold; display:none;"></div>
             <button id="addToPlaylistBtn" class="add-to-pl-btn">＋ До плейлиста</button>
             <div class="progress-container">
                 <input type="range" id="progressBar" value="0" min="0" max="100" step="0.1">
             </div>
             <div class="controls">
-                <button id="rewind10"     class="control-btn">⏪</button>
+                <button id="rewind10"     class="control-btn">⮜</button>
                 <button id="playPauseBtn" class="control-btn play-btn">▶</button>
-                <button id="forward10"    class="control-btn">⏩</button>
+                <button id="forward10"    class="control-btn">⮞</button>
             </div>
             <audio id="audio" style="display:none;"></audio>
         </div>
@@ -90,8 +91,27 @@
     <!-- DISCOVER -->
     <div id="DiscoverTab" class="tab-pane">
         <div class="Discover">
-            <input type="text" id="searchInput" placeholder="🔍 Пошук за назвою...">
-            <div class="song-list-wrap" id="songList"></div>
+            <div class="discover-subtabs">
+                <button class="subtab-btn active" data-subtab="music">Музика</button>
+                <button class="subtab-btn" data-subtab="publicPlaylists">Плейлисти</button>
+            </div>
+            <div id="subtab-music" class="subtab-pane active">
+                <input type="text" id="searchInput" placeholder="Пошук потужності">
+                <div class="song-list-wrap" id="songList"></div>
+            </div>
+            <div id="subtab-publicPlaylists" class="subtab-pane">
+                <input type="text" id="searchPublicPl" placeholder="Пошук плейлиста...">
+                <div id="publicPlMainView">
+                    <div class="song-list-wrap" id="publicPlaylistsList"></div>
+                </div>
+                <div id="publicPlDetailView" class="hidden">
+                    <div class="pl-detail-header">
+                        <button id="backToPublicPl" class="back-btn">← Назад</button>
+                        <span id="publicPlDetailName" class="pl-detail-title"></span>
+                    </div>
+                    <div class="song-list-wrap" id="publicPlSongList"></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -101,10 +121,14 @@
             <div id="plMainView">
                 <div class="list-header-row">
                     <h3>Плейлисти</h3>
-                    <button id="showCreateForm" class="create-pl-btn">＋ Новий</button>
+                    <button id="showCreateForm" class="create-pl-btn">Новий</button>
                 </div>
                 <div id="createPlForm" class="create-pl-form hidden">
                     <input type="text" id="newPlName" placeholder="Назва плейлиста" maxlength="40">
+                    <div class="pl-visibility-toggle">
+                        <button class="visibility-btn active" data-vis="private">Приватний</button>
+                        <button class="visibility-btn" data-vis="public">Публічний</button>
+                    </div>
                     <div class="create-pl-actions">
                         <button id="confirmCreatePl" class="auth-submit">Створити</button>
                         <button id="cancelCreatePl"  class="auth-submit cancel-btn">Скасувати</button>
@@ -135,7 +159,7 @@
 
             <!-- Додати пісню -->
             <div class="menu-section">
-                <div class="menu-section-title">➕ Додати пісню</div>
+                <div class="menu-section-title">Додати пісню</div>
                 <div class="menu-form">
                     <input type="text" id="addSongName"    placeholder="Назва пісні" maxlength="80">
                     <input type="text" id="addSongURL"     placeholder="Посилання на трек (Dropbox)">
@@ -153,19 +177,17 @@
 
             <!-- Видалити пісню -->
             <div class="menu-section">
-                <div class="menu-section-title">🗑️ Видалити пісню</div>
+                <div class="menu-section-title">Видалити пісню</div>
                 <div class="menu-form">
-                    <input type="text" id="deleteSongSearch" placeholder="🔍 Пошук своїх пісень...">
+                    <input type="text" id="deleteSongSearch" placeholder="Пошук пісінек">
                     <div class="song-list-wrap" id="deleteSongList"></div>
                 </div>
             </div>
 
         </div>
-    </div>
-
+    </div>    
 </div>
-
-<script src="dropbox-db.js"></script>
+<script src="supabase-db.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

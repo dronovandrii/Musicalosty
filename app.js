@@ -1,4 +1,4 @@
-// app.js — використовує DB (dropbox-db.js) замість localStorage модулів
+// app.js — використовує DB (supabase-db.js)
 
 // ══ СТАН ════════════════════════════════════════════════════
 let isPlaying     = false;
@@ -71,10 +71,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         const name    = document.getElementById('newPlName').value.trim();
         const session = DB.getSession();
         if (!name || !session) return;
+        const isPublic = document.querySelector('.visibility-btn.active')?.dataset.vis === 'public';
         await withLoading('confirmCreatePl', async () => {
-            await DB.createPlaylist(name, session.profileId);
+            await DB.createPlaylist(name, session.profileId, isPublic);
             document.getElementById('newPlName').value = '';
             document.getElementById('createPlForm').classList.add('hidden');
+            // reset toggle to private
+            document.querySelectorAll('.visibility-btn').forEach(b => b.classList.toggle('active', b.dataset.vis === 'private'));
             await renderPlaylists();
         });
     });
@@ -129,6 +132,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     document.getElementById('deleteSongSearch').addEventListener('input', renderDeleteList);
+
+    // ── Subtabs у Discover ───────────────────────────────────
+    document.querySelectorAll('.subtab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.subtab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.subtab-pane').forEach(p => p.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('subtab-' + btn.dataset.subtab)?.classList.add('active');
+            if (btn.dataset.subtab === 'publicPlaylists') renderPublicPlaylists();
+        });
+    });
+
+    // ── Видимість плейлиста (публічний/приватний) ────────────
+    document.querySelectorAll('.visibility-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.visibility-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        });
+    });
+
+    // ── Назад у публічних плейлистах ────────────────────────
+    document.getElementById('backToPublicPl').addEventListener('click', () => {
+        document.getElementById('publicPlDetailView').classList.add('hidden');
+        document.getElementById('publicPlMainView').classList.remove('hidden');
+    });
+
+    // ── Пошук публічних плейлистів ───────────────────────────
+    document.getElementById('searchPublicPl').addEventListener('input', () => renderPublicPlaylists());
 });
 
 async function withLoading(btnId, fn) {
@@ -219,9 +250,10 @@ async function renderPlaylists() {
         pls.forEach(pl => {
             const item = document.createElement('div');
             item.className = 'playlist-item';
+            const badge = pl.isPublic ? '<span class="pl-public-badge">🌐 публічний</span>' : '';
             item.innerHTML = `
                 <div class="pl-item-info">
-                    <span class="pl-name">${pl.name}</span>
+                    <span class="pl-name">${pl.name}${badge}</span>
                     <span class="pl-count">${pl.songIDs.length} пісень</span>
                 </div>
                 <button class="pl-delete-btn">✕</button>
@@ -391,11 +423,17 @@ function playSong(song) {
     const audio        = document.getElementById('audio');
     const trackInfo    = document.getElementById('trackInfo');
     const coverImg     = document.getElementById('coverImg');
+    const noTrackMsg   = document.getElementById('noTrackMsg');
     const playPauseBtn = document.getElementById('playPauseBtn');
     currentSongID = song.id;
     audio.src = convertDropboxUrl(song.songURL);
-    if (song.previewURL) coverImg.src = convertDropboxUrl(song.previewURL).replace('dl=1','raw=1');
-    trackInfo.textContent = `🎵 ${song.nameSong}`;
+    if (song.previewURL) {
+        coverImg.src = convertDropboxUrl(song.previewURL).replace('dl=1','raw=1');
+        coverImg.classList.remove('hidden');
+    }
+    if (noTrackMsg) noTrackMsg.style.display = 'none';
+    trackInfo.textContent = `${song.nameSong}`;
+    trackInfo.style.display = 'block';
     audio.play().then(() => { isPlaying = true; playPauseBtn.textContent = '⏸'; }).catch(console.error);
 }
 
@@ -444,6 +482,123 @@ function setActiveDiscoverItem(songID) {
     document.querySelector('#songList .song-item.active')?.scrollIntoView({ block: 'nearest' });
 }
 
+// ══ ПУБЛІЧНІ ПЛЕЙЛИСТИ ══════════════════════════════════════
+async function renderPublicPlaylists() {
+    const listEl = document.getElementById('publicPlaylistsList');
+    if (!listEl) return;
+    document.getElementById('publicPlMainView').classList.remove('hidden');
+    document.getElementById('publicPlDetailView').classList.add('hidden');
+
+    listEl.innerHTML = '<div class="pl-empty">⏳ Завантаження...</div>';
+    try {
+        const query = (document.getElementById('searchPublicPl')?.value || '').toLowerCase();
+        const pls   = (await DB.getPublicPlaylists()).filter(p =>
+            p.name.toLowerCase().includes(query)
+        );
+        listEl.innerHTML = '';
+        if (!pls.length) {
+            listEl.innerHTML = '<div class="pl-empty">Публічних плейлистів немає</div>';
+            return;
+        }
+        for (const pl of pls) {
+            const item       = document.createElement('div');
+            item.className   = 'playlist-item';
+            const authorName = await DB.getUserName(pl.profileId);
+            item.innerHTML = `
+                <div class="pl-item-info">
+                    <span class="pl-name">${pl.name}</span>
+                    <span class="pl-count">${pl.songIDs.length} пісень · ${authorName}</span>
+                </div>
+                <button class="pl-add-btn">＋ В мої</button>
+            `;
+            item.querySelector('.pl-item-info').addEventListener('click', () => openPublicPlaylist(pl));
+            item.querySelector('.pl-add-btn').addEventListener('click', async e => {
+                e.stopPropagation();
+                const session = DB.getSession();
+                if (!session) { showToast('Увійдіть для цього'); return; }
+                openCopyToPlaylistModal(pl, session);
+            });
+            listEl.appendChild(item);
+        }
+    } catch (err) {
+        listEl.innerHTML = `<div class="pl-empty">❌ ${err.message}</div>`;
+    }
+}
+
+function openPublicPlaylist(pl) {
+    document.getElementById('publicPlMainView').classList.add('hidden');
+    document.getElementById('publicPlDetailView').classList.remove('hidden');
+    document.getElementById('publicPlDetailName').textContent = pl.name;
+
+    const songs  = pl.songIDs.map(id => SONGS.find(s => s.id === id)).filter(Boolean);
+    const listEl = document.getElementById('publicPlSongList');
+    listEl.innerHTML = '';
+
+    if (!songs.length) {
+        listEl.innerHTML = '<div class="pl-empty">Плейлист порожній</div>';
+        return;
+    }
+    songs.forEach((song, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'song-item';
+        if (song.id === currentSongID) btn.classList.add('active');
+        const thumbSrc = song.previewURL ? convertDropboxUrl(song.previewURL).replace('dl=1','raw=1') : '';
+        btn.innerHTML = `
+            <span class="song-num">${idx+1}</span>
+            <img class="song-thumb" src="${thumbSrc}" onerror="this.style.display='none'">
+            <div class="song-details">
+                <div class="song-title">${song.nameSong}</div>
+                <div class="song-date">${song.dateUpdate}</div>
+            </div>
+        `;
+        btn.addEventListener('click', () => {
+            queue = songs; queueIdx = idx;
+            playSong(songs[idx]);
+            listEl.querySelectorAll('.song-item').forEach((el,i) => el.classList.toggle('active', i===idx));
+            switchToTab('Home');
+        });
+        listEl.appendChild(btn);
+    });
+}
+
+async function openCopyToPlaylistModal(sourcePl, session) {
+    const modal  = document.getElementById('addToPlaylistModal');
+    const listEl = document.getElementById('playlistChoiceList');
+    const title  = modal.querySelector('.modal-title');
+    title.textContent = `Копіювати до свого плейлиста`;
+    modal.classList.remove('hidden');
+    listEl.innerHTML = '<div class="pl-empty">⏳ Завантаження...</div>';
+    try {
+        const myPls = await DB.getPlaylists(session.profileId);
+        listEl.innerHTML = '';
+        if (!myPls.length) {
+            listEl.innerHTML = '<div class="pl-empty">Спочатку створіть плейлист</div>';
+            return;
+        }
+        myPls.forEach(pl => {
+            const btn = document.createElement('button');
+            btn.className = 'pl-choice-btn';
+            btn.textContent = pl.name;
+            btn.addEventListener('click', async () => {
+                modal.classList.add('hidden');
+                title.textContent = 'Додати до плейлиста';
+                let added = 0;
+                for (const songId of sourcePl.songIDs) {
+                    try {
+                        const res = await DB.addSongToPlaylist(pl.id, songId, session.profileId);
+                        if (res.ok) added++;
+                    } catch {}
+                }
+                showToast(`✅ Додано ${added} пісень до "${pl.name}"`);
+                await renderPlaylists();
+            });
+            listEl.appendChild(btn);
+        });
+    } catch (err) {
+        listEl.innerHTML = `<div class="pl-empty">❌ ${err.message}</div>`;
+    }
+}
+
 function showToast(msg) {
     let t = document.getElementById('toast');
     if (!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
@@ -451,8 +606,4 @@ function showToast(msg) {
     clearTimeout(t._to); t._to = setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-function convertDropboxUrl(url) {
-    if (!url || !url.includes('dropbox.com')) return url;
-    if (url.includes('raw=1') || url.includes('dl=1')) return url;
-    return url.includes('?') ? url.replace('dl=0','dl=1') : url+'?dl=1';
-}
+
